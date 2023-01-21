@@ -56,17 +56,23 @@ public class CrptApi {
         if (!this.validator.isValid(document))
             throw new Exceptions.InvalidDocumentException("Invalid value of the document");
         if (clientToken == null) throw new Exceptions.NullTokenException("Token can not be null");
+        try {
+//        Увеличиваем счетчик запросов в соответствии с условиями и выполняем запрос.
+//        Возвращаем полученный объект из ответа сервера.
+            increase();
+            return send(document, clientToken);
+        } catch (Exception e) {
+            throw new Exceptions.SendDocumentException("The document didn't send: " + document);
+        }
+    }
+
+    private void increase() throws InterruptedException {
 //        Если счетчик уже превышает допустимый лимит запросов, то подписываемся на изменение его значения.
 //        Если значение счетчика позволяет выполнить запрос, увеличиваем его на единицу, открываем критическую секцию.
-//        Выполняем запрос.
         try {
             this.lock.lock();
             while (this.counter > this.requestLimit) this.condition.await();
             ++this.counter;
-            this.lock.unlock();
-            return send(document, clientToken);
-        } catch (Exception e) {
-            throw new Exceptions.SendDocumentException("The document didn't send: " + document);
         } finally {
             this.lock.unlock();
         }
